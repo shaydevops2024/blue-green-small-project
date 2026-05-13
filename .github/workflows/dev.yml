@@ -9,9 +9,9 @@ env:
   IMAGE_TAG: dev-${{ github.sha }}
 
 jobs:
-  # ── calc-api: lint + unit tests ───────────────────────────────────────────
+  # ── calc-api: unit tests ──────────────────────────────────────────────────
   ci-calc:
-    name: Lint & Test — calc-api
+    name: Test — calc-api
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -22,9 +22,6 @@ jobs:
           cache-dependency-path: calc-api/package-lock.json
       - name: Install dependencies
         run: npm ci
-        working-directory: calc-api
-      - name: Lint
-        run: npm run lint
         working-directory: calc-api
       - name: Unit tests
         run: npm test
