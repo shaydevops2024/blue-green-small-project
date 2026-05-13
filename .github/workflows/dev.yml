@@ -45,9 +45,7 @@ jobs:
         run: flake8 app.py
         working-directory: history-api
       - name: Unit tests
-        run: |
-          pytest; rc=$?
-          [ $rc -eq 0 ] || [ $rc -eq 5 ]
+        run: pytest || [ $? -eq 5 ]
         working-directory: history-api
 
   # ── build images only after both CI jobs pass ──────────────────────────────
