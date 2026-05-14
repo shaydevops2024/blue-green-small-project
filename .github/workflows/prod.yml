@@ -1,0 +1,12 @@
+name: Prod Pipeline
+
+on:
+  push:
+    branches: [prod]
+
+jobs:
+  placeholder:
+    name: Not yet configured
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Prod pipeline coming soon"
