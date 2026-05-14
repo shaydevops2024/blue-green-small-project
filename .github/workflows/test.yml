@@ -22,14 +22,11 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: Resolve dev image tag
-        run: echo "DEV_IMAGE_TAG=dev-$(git log -1 --pretty=format:%H HEAD^2)" >> $GITHUB_ENV
-
       - name: Start full stack
         run: docker compose -f docker-compose.test.yml up -d
         env:
           DOCKERHUB_USER: ${{ env.DOCKERHUB_USER }}
-          IMAGE_TAG: ${{ env.DEV_IMAGE_TAG }}
+          IMAGE_TAG: dev-latest
       - name: Wait for services to be healthy
         run: |
           for i in $(seq 1 10); do
@@ -58,11 +55,11 @@ jobs:
 
       - name: Retag images as test
         run: |
-          docker tag ${{ env.DOCKERHUB_USER }}/frontend:${{ env.DEV_IMAGE_TAG }} \
+          docker tag ${{ env.DOCKERHUB_USER }}/frontend:dev-latest \
                      ${{ env.DOCKERHUB_USER }}/frontend:${{ env.IMAGE_TAG }}
-          docker tag ${{ env.DOCKERHUB_USER }}/calc-api:${{ env.DEV_IMAGE_TAG }} \
+          docker tag ${{ env.DOCKERHUB_USER }}/calc-api:dev-latest \
                      ${{ env.DOCKERHUB_USER }}/calc-api:${{ env.IMAGE_TAG }}
-          docker tag ${{ env.DOCKERHUB_USER }}/history-api:${{ env.DEV_IMAGE_TAG }} \
+          docker tag ${{ env.DOCKERHUB_USER }}/history-api:dev-latest \
                      ${{ env.DOCKERHUB_USER }}/history-api:${{ env.IMAGE_TAG }}
 
       - name: Push test-tagged images

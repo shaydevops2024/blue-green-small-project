@@ -65,19 +65,25 @@ jobs:
         with:
           context: ./frontend
           push: true
-          tags: ${{ env.DOCKERHUB_USER }}/frontend:${{ env.IMAGE_TAG }}
+          tags: |
+            ${{ env.DOCKERHUB_USER }}/frontend:${{ env.IMAGE_TAG }}
+            ${{ env.DOCKERHUB_USER }}/frontend:dev-latest
       - name: Build & push calc-api
         uses: docker/build-push-action@v5
         with:
           context: ./calc-api
           push: true
-          tags: ${{ env.DOCKERHUB_USER }}/calc-api:${{ env.IMAGE_TAG }}
+          tags: |
+            ${{ env.DOCKERHUB_USER }}/calc-api:${{ env.IMAGE_TAG }}
+            ${{ env.DOCKERHUB_USER }}/calc-api:dev-latest
       - name: Build & push history-api
         uses: docker/build-push-action@v5
         with:
           context: ./history-api
           push: true
-          tags: ${{ env.DOCKERHUB_USER }}/history-api:${{ env.IMAGE_TAG }}
+          tags: |
+            ${{ env.DOCKERHUB_USER }}/history-api:${{ env.IMAGE_TAG }}
+            ${{ env.DOCKERHUB_USER }}/history-api:dev-latest
 
   # ── open automated PR: dev → test ─────────────────────────────────────────
   open-pr:
