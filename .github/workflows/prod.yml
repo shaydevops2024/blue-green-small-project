@@ -4,9 +4,90 @@ on:
   push:
     branches: [prod]
 
+concurrency:
+  group: prod-pipeline
+  cancel-in-progress: false
+
+env:
+  DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+
 jobs:
-  placeholder:
-    name: Not yet configured
+  deploy:
+    name: Blue/Green Deploy
     runs-on: ubuntu-latest
     steps:
-      - run: echo "Prod pipeline coming soon"
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      # Find which target group is currently live on the listener
+      - name: Determine active / standby slot
+        id: slot
+        run: |
+          CURRENT_TG=$(aws elbv2 describe-listeners \
+            --listener-arns "${{ secrets.LISTENER_ARN }}" \
+            --query 'Listeners[0].DefaultActions[0].TargetGroupArn' \
+            --output text)
+
+          if [ "$CURRENT_TG" = "${{ secrets.BLUE_TG_ARN }}" ]; then
+            echo "active=blue"                                        >> $GITHUB_OUTPUT
+            echo "standby=green"                                      >> $GITHUB_OUTPUT
+            echo "standby_ip=${{ secrets.GREEN_PUBLIC_IP }}"         >> $GITHUB_OUTPUT
+            echo "standby_tg=${{ secrets.GREEN_TG_ARN }}"            >> $GITHUB_OUTPUT
+          else
+            echo "active=green"                                       >> $GITHUB_OUTPUT
+            echo "standby=blue"                                       >> $GITHUB_OUTPUT
+            echo "standby_ip=${{ secrets.BLUE_PUBLIC_IP }}"          >> $GITHUB_OUTPUT
+            echo "standby_tg=${{ secrets.BLUE_TG_ARN }}"             >> $GITHUB_OUTPUT
+          fi
+
+      - name: Set up SSH key
+        run: |
+          echo "${{ secrets.EC2_SSH_KEY }}" > /tmp/ec2_key.pem
+          chmod 600 /tmp/ec2_key.pem
+
+      - name: Copy compose file to standby (${{ steps.slot.outputs.standby }})
+        run: |
+          scp -o StrictHostKeyChecking=no -i /tmp/ec2_key.pem \
+            docker-compose.prod.yml \
+            ec2-user@${{ steps.slot.outputs.standby_ip }}:/home/ec2-user/docker-compose.prod.yml
+
+      - name: Deploy on standby
+        env:
+          STANDBY_IP: ${{ steps.slot.outputs.standby_ip }}
+          DH_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+          DH_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          ssh -o StrictHostKeyChecking=no -i /tmp/ec2_key.pem ec2-user@$STANDBY_IP \
+            "echo '$DH_TOKEN' | docker login -u '$DH_USER' --password-stdin \
+             && DOCKERHUB_USER='$DH_USER' IMAGE_TAG=test-latest \
+                docker compose -f /home/ec2-user/docker-compose.prod.yml pull \
+             && DOCKERHUB_USER='$DH_USER' IMAGE_TAG=test-latest \
+                docker compose -f /home/ec2-user/docker-compose.prod.yml up -d"
+
+      # Poll ALB target health — healthier signal than curling the instance directly
+      - name: Wait for standby to be healthy in ALB
+        run: |
+          for i in $(seq 1 18); do
+            STATE=$(aws elbv2 describe-target-health \
+              --target-group-arn "${{ steps.slot.outputs.standby_tg }}" \
+              --query 'TargetHealthDescriptions[0].TargetHealth.State' \
+              --output text)
+            echo "Attempt $i — target health: $STATE"
+            [ "$STATE" = "healthy" ] && echo "Standby is healthy" && exit 0
+            sleep 10
+          done
+          echo "Standby did not become healthy in time"
+          exit 1
+
+      - name: Switch ALB → ${{ steps.slot.outputs.standby }}
+        run: |
+          aws elbv2 modify-listener \
+            --listener-arn "${{ secrets.LISTENER_ARN }}" \
+            --default-actions "Type=forward,TargetGroupArn=${{ steps.slot.outputs.standby_tg }}"
+          echo "Traffic switched: ${{ steps.slot.outputs.active }} → ${{ steps.slot.outputs.standby }}"

@@ -4,6 +4,10 @@ on:
   push:
     branches: [dev]
 
+concurrency:
+  group: dev-pipeline
+  cancel-in-progress: true
+
 env:
   DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USERNAME }}
   IMAGE_TAG: dev-${{ github.sha }}

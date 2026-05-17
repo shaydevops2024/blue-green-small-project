@@ -4,6 +4,10 @@ on:
   push:
     branches: [test]
 
+concurrency:
+  group: test-pipeline
+  cancel-in-progress: true
+
 env:
   DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USERNAME }}
   IMAGE_TAG: test-${{ github.sha }}
@@ -57,16 +61,25 @@ jobs:
         run: |
           docker tag ${{ env.DOCKERHUB_USER }}/frontend:dev-latest \
                      ${{ env.DOCKERHUB_USER }}/frontend:${{ env.IMAGE_TAG }}
+          docker tag ${{ env.DOCKERHUB_USER }}/frontend:dev-latest \
+                     ${{ env.DOCKERHUB_USER }}/frontend:test-latest
           docker tag ${{ env.DOCKERHUB_USER }}/calc-api:dev-latest \
                      ${{ env.DOCKERHUB_USER }}/calc-api:${{ env.IMAGE_TAG }}
+          docker tag ${{ env.DOCKERHUB_USER }}/calc-api:dev-latest \
+                     ${{ env.DOCKERHUB_USER }}/calc-api:test-latest
           docker tag ${{ env.DOCKERHUB_USER }}/history-api:dev-latest \
                      ${{ env.DOCKERHUB_USER }}/history-api:${{ env.IMAGE_TAG }}
+          docker tag ${{ env.DOCKERHUB_USER }}/history-api:dev-latest \
+                     ${{ env.DOCKERHUB_USER }}/history-api:test-latest
 
       - name: Push test-tagged images
         run: |
           docker push ${{ env.DOCKERHUB_USER }}/frontend:${{ env.IMAGE_TAG }}
+          docker push ${{ env.DOCKERHUB_USER }}/frontend:test-latest
           docker push ${{ env.DOCKERHUB_USER }}/calc-api:${{ env.IMAGE_TAG }}
+          docker push ${{ env.DOCKERHUB_USER }}/calc-api:test-latest
           docker push ${{ env.DOCKERHUB_USER }}/history-api:${{ env.IMAGE_TAG }}
+          docker push ${{ env.DOCKERHUB_USER }}/history-api:test-latest
 
 
 
