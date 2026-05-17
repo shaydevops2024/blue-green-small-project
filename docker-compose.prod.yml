@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   frontend:
-    image: ${DOCKERHUB_USER}/small-frontend:${IMAGE_TAG}
+    image: ${DOCKERHUB_USER}/frontend:${IMAGE_TAG}
     ports:
       - "80:80"
     restart: always
@@ -11,19 +11,40 @@ services:
       - history-api
 
   calc-api:
-    image: ${DOCKERHUB_USER}/small-calc-api:${IMAGE_TAG}
+    image: ${DOCKERHUB_USER}/calc-api:${IMAGE_TAG}
     ports:
       - "3001:3001"
     restart: always
 
   history-api:
-    image: ${DOCKERHUB_USER}/small-history-api:${IMAGE_TAG}
+    image: ${DOCKERHUB_USER}/history-api:${IMAGE_TAG}
     ports:
       - "3002:3002"
     restart: always
     environment:
-      DB_HOST: ${DB_HOST}
+      DB_HOST: db
       DB_PORT: 5432
-      DB_USER: ${DB_USER}
-      DB_PASSWORD: ${DB_PASSWORD}
-      DB_NAME: ${DB_NAME}
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: calculator
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: calculator
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
+
+volumes:
+  db-data:
