@@ -1,0 +1,105 @@
+name: Test Pipeline
+
+on:
+  push:
+    branches: [test]
+
+concurrency:
+  group: test-pipeline
+  cancel-in-progress: true
+
+env:
+  DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+  IMAGE_TAG: test-${{ github.sha }}
+
+jobs:
+  
+
+  # ── integration tests ──────────────────────────────
+  integration-test:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Start full stack
+        run: docker compose -f docker-compose.test.yml up -d
+        env:
+          DOCKERHUB_USER: ${{ env.DOCKERHUB_USER }}
+          IMAGE_TAG: dev-latest
+      - name: Wait for services to be healthy
+        run: |
+          for i in $(seq 1 10); do
+            if curl -sf http://localhost:3001/health && curl -sf http://localhost:3002/health; then
+              echo "All services healthy"
+              exit 0
+            fi
+            echo "Attempt $i — waiting 5s..."
+            sleep 5
+          done
+          echo "Services did not become healthy"
+          exit 1
+
+      - name: Test calc-api
+        run: |
+          curl -sf -X POST http://localhost:3001/calculate \
+            -H "Content-Type: application/json" \
+            -d '{"a": 2, "b": 3, "operation": "+"}'
+
+      - name: Test history-api
+        run: curl -sf http://localhost:3002/history
+
+      - name: Tear down stack
+        if: always()
+        run: docker compose -f docker-compose.test.yml down
+
+      - name: Retag images as test
+        run: |
+          docker tag ${{ env.DOCKERHUB_USER }}/frontend:dev-latest \
+                     ${{ env.DOCKERHUB_USER }}/frontend:${{ env.IMAGE_TAG }}
+          docker tag ${{ env.DOCKERHUB_USER }}/frontend:dev-latest \
+                     ${{ env.DOCKERHUB_USER }}/frontend:test-latest
+          docker tag ${{ env.DOCKERHUB_USER }}/calc-api:dev-latest \
+                     ${{ env.DOCKERHUB_USER }}/calc-api:${{ env.IMAGE_TAG }}
+          docker tag ${{ env.DOCKERHUB_USER }}/calc-api:dev-latest \
+                     ${{ env.DOCKERHUB_USER }}/calc-api:test-latest
+          docker tag ${{ env.DOCKERHUB_USER }}/history-api:dev-latest \
+                     ${{ env.DOCKERHUB_USER }}/history-api:${{ env.IMAGE_TAG }}
+          docker tag ${{ env.DOCKERHUB_USER }}/history-api:dev-latest \
+                     ${{ env.DOCKERHUB_USER }}/history-api:test-latest
+
+      - name: Push test-tagged images
+        run: |
+          docker push ${{ env.DOCKERHUB_USER }}/frontend:${{ env.IMAGE_TAG }}
+          docker push ${{ env.DOCKERHUB_USER }}/frontend:test-latest
+          docker push ${{ env.DOCKERHUB_USER }}/calc-api:${{ env.IMAGE_TAG }}
+          docker push ${{ env.DOCKERHUB_USER }}/calc-api:test-latest
+          docker push ${{ env.DOCKERHUB_USER }}/history-api:${{ env.IMAGE_TAG }}
+          docker push ${{ env.DOCKERHUB_USER }}/history-api:test-latest
+
+
+
+  # ── open automated PR: test → prod ─────────────────────────────────────────
+  open-pr:
+    name: Open PR test → prod
+    runs-on: ubuntu-latest
+    needs: integration-test
+    permissions:
+      pull-requests: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create PR test → prod
+        run: |
+          gh pr create \
+            --base prod \
+            --head test \
+            --title "ci: promote test → prod (${{ env.IMAGE_TAG }})" \
+            --body "Automated promotion from test. Images tagged ${{ env.IMAGE_TAG }}." \
+            || echo "PR already exists or no diff — skipping"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

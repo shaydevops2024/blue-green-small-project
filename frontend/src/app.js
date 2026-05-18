@@ -101,3 +101,11 @@ function clearCalc() {
 }
 
 loadHistory();
+
+(function () {
+  const badge = document.getElementById('slot-badge');
+  if (!badge) return;
+  const slot = (window.SLOT || 'unknown').toLowerCase();
+  badge.textContent = slot;
+  badge.className = 'slot-' + slot;
+})();

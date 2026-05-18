@@ -1,13 +1,8 @@
-version: '3.8'
-
 services:
   frontend:
     image: ${DOCKERHUB_USER}/frontend:${IMAGE_TAG}
     ports:
       - "80:80"
-    restart: always
-    environment:
-      - SLOT=${SLOT}
     depends_on:
       - calc-api
       - history-api
@@ -16,13 +11,11 @@ services:
     image: ${DOCKERHUB_USER}/calc-api:${IMAGE_TAG}
     ports:
       - "3001:3001"
-    restart: always
 
   history-api:
     image: ${DOCKERHUB_USER}/history-api:${IMAGE_TAG}
     ports:
       - "3002:3002"
-    restart: always
     environment:
       DB_HOST: db
       DB_PORT: 5432
@@ -39,14 +32,8 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: calculator
-    volumes:
-      - db-data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
-    restart: always
-
-volumes:
-  db-data:
