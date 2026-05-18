@@ -3,7 +3,7 @@ resource "aws_instance" "blue" {
   instance_type          = var.instance_type
   subnet_id              = var.subnet_a_id
   vpc_security_group_ids = [var.ec2_sg_id]
-  key_name               = var.key_name
+  iam_instance_profile   = var.instance_profile_name
 
   user_data = <<-EOF
     #!/bin/bash
@@ -29,7 +29,7 @@ resource "aws_instance" "green" {
   instance_type          = var.instance_type
   subnet_id              = var.subnet_b_id
   vpc_security_group_ids = [var.ec2_sg_id]
-  key_name               = var.key_name
+  iam_instance_profile   = var.instance_profile_name
 
   user_data = <<-EOF
     #!/bin/bash

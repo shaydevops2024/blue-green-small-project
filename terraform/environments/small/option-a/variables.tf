@@ -18,18 +18,10 @@ variable "subnet_b_cidr" {
   type = string
 }
 
-variable "ssh_allowed_cidr" {
-  type = string
-}
-
 variable "ami_id" {
   type = string
 }
 
 variable "instance_type" {
-  type = string
-}
-
-variable "key_name" {
   type = string
 }
