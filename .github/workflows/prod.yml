@@ -25,22 +25,25 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
-      # Find which target group is currently live on the listener
+      # Find which target group is currently live on the listener (weighted forward — active = weight 100)
       - name: Determine active / standby slot
         id: slot
         run: |
-          CURRENT_TG=$(aws elbv2 describe-listeners \
+          TG_JSON=$(aws elbv2 describe-listeners \
             --listener-arns "${{ secrets.LISTENER_ARN }}" \
-            --query 'Listeners[0].DefaultActions[0].TargetGroupArn' \
-            --output text)
+            --query 'Listeners[0].DefaultActions[0].ForwardConfig.TargetGroups' \
+            --output json)
+          CURRENT_TG=$(echo "$TG_JSON" | jq -r '.[] | select(.Weight == 100) | .TargetGroupArn')
 
           if [ "$CURRENT_TG" = "${{ secrets.BLUE_TG_ARN }}" ]; then
             echo "active=blue"                                          >> $GITHUB_OUTPUT
+            echo "active_tg=${{ secrets.BLUE_TG_ARN }}"               >> $GITHUB_OUTPUT
             echo "standby=green"                                        >> $GITHUB_OUTPUT
             echo "standby_id=${{ secrets.GREEN_INSTANCE_ID }}"         >> $GITHUB_OUTPUT
             echo "standby_tg=${{ secrets.GREEN_TG_ARN }}"              >> $GITHUB_OUTPUT
           else
             echo "active=green"                                         >> $GITHUB_OUTPUT
+            echo "active_tg=${{ secrets.GREEN_TG_ARN }}"               >> $GITHUB_OUTPUT
             echo "standby=blue"                                         >> $GITHUB_OUTPUT
             echo "standby_id=${{ secrets.BLUE_INSTANCE_ID }}"          >> $GITHUB_OUTPUT
             echo "standby_tg=${{ secrets.BLUE_TG_ARN }}"               >> $GITHUB_OUTPUT
@@ -102,7 +105,7 @@ jobs:
           echo "SSM deploy timed out"
           exit 1
 
-      # Poll ALB target health — healthier signal than curling the instance directly
+      # Both TGs are always in the weighted forward rule so ALB health-checks both — standby will show healthy/unhealthy
       - name: Wait for standby to be healthy in ALB
         run: |
           for i in $(seq 1 18); do
@@ -121,5 +124,8 @@ jobs:
         run: |
           aws elbv2 modify-listener \
             --listener-arn "${{ secrets.LISTENER_ARN }}" \
-            --default-actions "Type=forward,TargetGroupArn=${{ steps.slot.outputs.standby_tg }}"
+            --default-actions "$(jq -n \
+              --arg active "${{ steps.slot.outputs.active_tg }}" \
+              --arg standby "${{ steps.slot.outputs.standby_tg }}" \
+              '[{"Type":"forward","ForwardConfig":{"TargetGroups":[{"TargetGroupArn":$active,"Weight":0},{"TargetGroupArn":$standby,"Weight":100}]}}]')"
           echo "Traffic switched: ${{ steps.slot.outputs.active }} → ${{ steps.slot.outputs.standby }}"
