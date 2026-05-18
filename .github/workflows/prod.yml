@@ -64,7 +64,8 @@ jobs:
           DH_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
         run: |
           ssh -o StrictHostKeyChecking=no -i /tmp/ec2_key.pem ec2-user@$STANDBY_IP \
-            "echo '$DH_TOKEN' | docker login -u '$DH_USER' --password-stdin \
+            ". /etc/profile.d/slot.sh \
+             && echo '$DH_TOKEN' | docker login -u '$DH_USER' --password-stdin \
              && DOCKERHUB_USER='$DH_USER' IMAGE_TAG=test-latest \
                 docker compose -f /home/ec2-user/docker-compose.prod.yml pull \
              && DOCKERHUB_USER='$DH_USER' IMAGE_TAG=test-latest \
