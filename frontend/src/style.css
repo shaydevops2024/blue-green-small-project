@@ -127,3 +127,20 @@ button:active {
   color: #a0a0b0;
   font-style: italic;
 }
+
+#slot-badge {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  padding: 0.3rem 0.9rem;
+  border-radius: 20px;
+  font-size: 0.7rem;
+  font-weight: bold;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  z-index: 100;
+}
+
+#slot-badge.slot-blue  { background: #1e90ff; color: white; }
+#slot-badge.slot-green { background: #28a745; color: white; }
+#slot-badge.slot-unknown { background: #666; color: #ccc; }

@@ -12,6 +12,11 @@ resource "aws_instance" "blue" {
     systemctl enable docker
     systemctl start docker
     usermod -aG docker ec2-user
+    echo 'export SLOT=blue' > /etc/profile.d/slot.sh
+    mkdir -p /usr/local/lib/docker/cli-plugins
+    curl -SL "https://github.com/docker/compose/releases/download/v2.24.0/docker-compose-linux-x86_64" \
+      -o /usr/local/lib/docker/cli-plugins/docker-compose
+    chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
   EOF
 
   tags = {
@@ -33,6 +38,11 @@ resource "aws_instance" "green" {
     systemctl enable docker
     systemctl start docker
     usermod -aG docker ec2-user
+    echo 'export SLOT=green' > /etc/profile.d/slot.sh
+    mkdir -p /usr/local/lib/docker/cli-plugins
+    curl -SL "https://github.com/docker/compose/releases/download/v2.24.0/docker-compose-linux-x86_64" \
+      -o /usr/local/lib/docker/cli-plugins/docker-compose
+    chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
   EOF
 
   tags = {
