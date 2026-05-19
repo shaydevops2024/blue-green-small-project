@@ -6,7 +6,7 @@
 
 body {
   font-family: 'Segoe UI', sans-serif;
-  background: #0d2b2b;
+  background: #1a1a2e;
   color: #eee;
   display: flex;
   justify-content: center;
@@ -17,7 +17,7 @@ body {
 }
 
 .calculator {
-  background: #0a1f1f;
+  background: #16213e;
   border-radius: 12px;
   padding: 1.5rem;
   width: 280px;
@@ -34,7 +34,7 @@ h1 {
 }
 
 #display {
-  background: #0f3d2e;
+  background: #0f3460;
   border-radius: 8px;
   padding: 1rem;
   text-align: right;
@@ -92,7 +92,7 @@ button:active {
 }
 
 .history-panel {
-  background: #0a1f1f;
+  background: #16213e;
   border-radius: 12px;
   padding: 1.5rem;
   width: 280px;
