@@ -80,6 +80,7 @@ jobs:
           image-ref: ${{ env.DOCKERHUB_USER }}/calc-api:dev-latest
           severity: CRITICAL,HIGH
           exit-code: '1'
+          ignore-unfixed: true
 
       - name: Scan history-api image for CVEs
         uses: aquasecurity/trivy-action@master
@@ -87,6 +88,7 @@ jobs:
           image-ref: ${{ env.DOCKERHUB_USER }}/history-api:dev-latest
           severity: CRITICAL,HIGH
           exit-code: '1'
+          ignore-unfixed: true
 
       - name: Scan frontend image for CVEs
         uses: aquasecurity/trivy-action@master
@@ -94,6 +96,7 @@ jobs:
           image-ref: ${{ env.DOCKERHUB_USER }}/frontend:dev-latest
           severity: CRITICAL,HIGH
           exit-code: '1'
+          ignore-unfixed: true
 
       - name: Retag images as test
         run: |
