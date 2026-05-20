@@ -93,8 +93,8 @@ jobs:
           context: ./optionB/frontend
           push: true
           tags: |
-            ${{ steps.ecr-login.outputs.registry }}/frontend:${{ env.IMAGE_TAG }}
-            ${{ steps.ecr-login.outputs.registry }}/frontend:dev-latest
+            ${{ secrets.FRONTEND_REPO_URL }}:${{ env.IMAGE_TAG }}
+            ${{ secrets.FRONTEND_REPO_URL }}:dev-latest
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,scope=frontend,mode=max
       - name: Build & push calc-api
@@ -103,8 +103,8 @@ jobs:
           context: ./optionB/calc-api
           push: true
           tags: |
-            ${{ steps.ecr-login.outputs.registry }}/calc-api:${{ env.IMAGE_TAG }}
-            ${{ steps.ecr-login.outputs.registry }}/calc-api:dev-latest
+            ${{ secrets.CALC_API_REPO_URL }}:${{ env.IMAGE_TAG }}
+            ${{ secrets.CALC_API_REPO_URL }}:dev-latest
           cache-from: type=gha,scope=calc-api
           cache-to: type=gha,scope=calc-api,mode=max
       - name: Build & push history-api
@@ -113,8 +113,8 @@ jobs:
           context: ./optionB/history-api
           push: true
           tags: |
-            ${{ steps.ecr-login.outputs.registry }}/history-api:${{ env.IMAGE_TAG }}
-            ${{ steps.ecr-login.outputs.registry }}/history-api:dev-latest
+            ${{ secrets.HISTORY_API_REPO_URL }}:${{ env.IMAGE_TAG }}
+            ${{ secrets.HISTORY_API_REPO_URL }}:dev-latest
           cache-from: type=gha,scope=history-api
           cache-to: type=gha,scope=history-api,mode=max
 
