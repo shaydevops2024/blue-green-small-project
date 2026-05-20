@@ -38,7 +38,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: npm
       - name: Install dependencies
         run: npm ci
         working-directory: optionB/calc-api
@@ -58,7 +57,6 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-          cache: pip
       - name: Install dependencies
         run: pip install -r requirements.txt -r requirements-dev.txt pip-audit pytest-cov
         working-directory: optionB/history-api

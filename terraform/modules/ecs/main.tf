@@ -207,8 +207,8 @@ resource "aws_ecs_task_definition" "main" {
       essential = true
       portMappings = [{ containerPort = 80, protocol = "tcp" }]
       environment = [
-        { name = "CALC_API_URL",    value = "http://localhost:3000" },
-        { name = "HISTORY_API_URL", value = "http://localhost:5000" }
+        { name = "CALC_API_HOST",    value = "localhost" },
+        { name = "HISTORY_API_HOST", value = "localhost" }
       ]
       logConfiguration = {
         logDriver = "awslogs"
