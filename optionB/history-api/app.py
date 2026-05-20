@@ -56,7 +56,10 @@ def add_history():
     if not data or 'expression' not in data or 'result' not in data:
         return jsonify({'error': 'expression and result are required'}), 400
 
-    record = History(expression=data['expression'], result=float(data['result']))
+    record = History(
+        expression=data['expression'],
+        result=float(data['result']),
+    )
     db.session.add(record)
     db.session.commit()
     return jsonify({'id': record.id}), 201
