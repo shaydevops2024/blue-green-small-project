@@ -2,7 +2,7 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-TF_DIR="$SCRIPT_DIR/terraform/environments/small/option-a"
+TF_DIR="$SCRIPT_DIR/../terraform/environments/small/option-b"
 
 # ── Colors ────────────────────────────────────────────────────────────────────
 RED='\033[0;31m'
@@ -23,6 +23,27 @@ if ! gh auth status &>/dev/null; then
 fi
 
 echo -e "${GREEN}GitHub authentication confirmed.${NC}\n"
+
+# ── DB password ───────────────────────────────────────────────────────────────
+echo -e "${BOLD}${CYAN}Database password setup${NC}"
+echo -e "${YELLOW}This password will be used for the RDS PostgreSQL instance.${NC}"
+echo -e "${YELLOW}It will also be saved as a GitHub secret (DB_PASSWORD) for the CI pipeline.${NC}\n"
+
+while true; do
+  read -rsp "$(echo -e "${BOLD}Enter DB password:${NC} ")" DB_PASS
+  echo ""
+  read -rsp "$(echo -e "${BOLD}Confirm DB password:${NC} ")" DB_PASS_CONFIRM
+  echo ""
+
+  if [ "$DB_PASS" = "$DB_PASS_CONFIRM" ]; then
+    break
+  else
+    echo -e "${RED}Passwords do not match. Try again.${NC}\n"
+  fi
+done
+
+export TF_VAR_db_password="$DB_PASS"
+echo -e "${GREEN}Password set for this session.${NC}\n"
 
 # ── Menu ──────────────────────────────────────────────────────────────────────
 echo -e "${BOLD}What do you want to do?${NC}"
@@ -50,8 +71,8 @@ do_apply() {
   echo -e "\n${BOLD}${CYAN}Running terraform apply...${NC}\n"
   terraform apply
 
-  echo -e "\n${BOLD}${CYAN}Pushing terraform outputs to GitHub secrets...${NC}\n"
-  bash "$SCRIPT_DIR/scripts/set-gh-secrets.sh"
+  echo -e "\n${BOLD}${CYAN}Pushing terraform outputs and secrets to GitHub...${NC}\n"
+  bash "$SCRIPT_DIR/scripts/set-gh-secrets.sh" "$DB_PASS"
 }
 
 case "$choice" in

@@ -1,39 +1,50 @@
-name: Test Pipeline
+name: Test Pipeline — Option B
 
 on:
   push:
     branches: [test]
+    paths:
+      - 'optionB/**'
+      - '.github/workflows/test-option-b.yml'
 
 concurrency:
-  group: test-pipeline
+  group: test-pipeline-option-b
   cancel-in-progress: true
 
 env:
-  DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USERNAME }}
   IMAGE_TAG: test-${{ github.sha }}
+  AWS_REGION: us-east-1
 
 jobs:
 
-  # ── integration tests ──────────────────────────────────────────────────────
+  # ── integration tests + CVE scan + retag ──────────────────────────────────
   integration-test:
     name: Integration Tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Login to DockerHub
-        uses: docker/login-action@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
       - name: Start full stack
-        run: docker compose -f docker-compose.test.yml up -d
+        run: docker compose -f optionB/docker-compose.test.yml up -d
         env:
-          DOCKERHUB_USER: ${{ env.DOCKERHUB_USER }}
-          IMAGE_TAG: dev-latest
+          FRONTEND_REPO_URL: ${{ secrets.FRONTEND_REPO_URL }}
+          CALC_API_REPO_URL: ${{ secrets.CALC_API_REPO_URL }}
+          HISTORY_API_REPO_URL: ${{ secrets.HISTORY_API_REPO_URL }}
+
       - name: Wait for services to be healthy
         run: |
           for i in $(seq 1 10); do
-            if curl -sf http://localhost:3001/health && curl -sf http://localhost:3002/health; then
+            if curl -sf http://localhost:3000/health && curl -sf http://localhost:5000/health; then
               echo "All services healthy"
               exit 0
             fi
@@ -45,7 +56,7 @@ jobs:
 
       - name: Test calc-api — assert correct result
         run: |
-          RESULT=$(curl -sf -X POST http://localhost:3001/calculate \
+          RESULT=$(curl -sf -X POST http://localhost:3000/calculate \
             -H "Content-Type: application/json" \
             -d '{"a": 2, "b": 3, "operation": "+"}')
           echo "Response: $RESULT"
@@ -57,14 +68,14 @@ jobs:
 
       - name: Test history-api — save and retrieve
         run: |
-          POST=$(curl -sf -X POST http://localhost:3002/history \
+          POST=$(curl -sf -X POST http://localhost:5000/history \
             -H "Content-Type: application/json" \
             -d '{"expression": "2 + 3", "result": 5}')
           echo "POST response: $POST"
           [ "$(echo "$POST" | jq -r '.id')" != "null" ] \
             || (echo "Expected id in POST response, got: $POST" && exit 1)
 
-          HISTORY=$(curl -sf http://localhost:3002/history)
+          HISTORY=$(curl -sf http://localhost:5000/history)
           echo "GET response: $HISTORY"
           [ "$(echo "$HISTORY" | jq -r '.[0].expression')" = "2 + 3" ] \
             || (echo "Expected saved entry in history, got: $HISTORY" && exit 1)
@@ -72,12 +83,16 @@ jobs:
 
       - name: Tear down stack
         if: always()
-        run: docker compose -f docker-compose.test.yml down
+        run: docker compose -f optionB/docker-compose.test.yml down
+        env:
+          FRONTEND_REPO_URL: ${{ secrets.FRONTEND_REPO_URL }}
+          CALC_API_REPO_URL: ${{ secrets.CALC_API_REPO_URL }}
+          HISTORY_API_REPO_URL: ${{ secrets.HISTORY_API_REPO_URL }}
 
       - name: Scan calc-api image for CVEs
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ env.DOCKERHUB_USER }}/calc-api:dev-latest
+          image-ref: ${{ secrets.CALC_API_REPO_URL }}:dev-latest
           severity: CRITICAL
           exit-code: '1'
           ignore-unfixed: true
@@ -85,7 +100,7 @@ jobs:
       - name: Scan history-api image for CVEs
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ env.DOCKERHUB_USER }}/history-api:dev-latest
+          image-ref: ${{ secrets.HISTORY_API_REPO_URL }}:dev-latest
           severity: CRITICAL
           exit-code: '1'
           ignore-unfixed: true
@@ -93,36 +108,34 @@ jobs:
       - name: Scan frontend image for CVEs
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ env.DOCKERHUB_USER }}/frontend:dev-latest
+          image-ref: ${{ secrets.FRONTEND_REPO_URL }}:dev-latest
           severity: CRITICAL
           exit-code: '1'
           ignore-unfixed: true
 
       - name: Retag images as test
         run: |
-          docker tag ${{ env.DOCKERHUB_USER }}/frontend:dev-latest \
-                     ${{ env.DOCKERHUB_USER }}/frontend:${{ env.IMAGE_TAG }}
-          docker tag ${{ env.DOCKERHUB_USER }}/frontend:dev-latest \
-                     ${{ env.DOCKERHUB_USER }}/frontend:test-latest
-          docker tag ${{ env.DOCKERHUB_USER }}/calc-api:dev-latest \
-                     ${{ env.DOCKERHUB_USER }}/calc-api:${{ env.IMAGE_TAG }}
-          docker tag ${{ env.DOCKERHUB_USER }}/calc-api:dev-latest \
-                     ${{ env.DOCKERHUB_USER }}/calc-api:test-latest
-          docker tag ${{ env.DOCKERHUB_USER }}/history-api:dev-latest \
-                     ${{ env.DOCKERHUB_USER }}/history-api:${{ env.IMAGE_TAG }}
-          docker tag ${{ env.DOCKERHUB_USER }}/history-api:dev-latest \
-                     ${{ env.DOCKERHUB_USER }}/history-api:test-latest
+          docker tag ${{ secrets.FRONTEND_REPO_URL }}:dev-latest \
+                     ${{ secrets.FRONTEND_REPO_URL }}:${{ env.IMAGE_TAG }}
+          docker tag ${{ secrets.FRONTEND_REPO_URL }}:dev-latest \
+                     ${{ secrets.FRONTEND_REPO_URL }}:test-latest
+          docker tag ${{ secrets.CALC_API_REPO_URL }}:dev-latest \
+                     ${{ secrets.CALC_API_REPO_URL }}:${{ env.IMAGE_TAG }}
+          docker tag ${{ secrets.CALC_API_REPO_URL }}:dev-latest \
+                     ${{ secrets.CALC_API_REPO_URL }}:test-latest
+          docker tag ${{ secrets.HISTORY_API_REPO_URL }}:dev-latest \
+                     ${{ secrets.HISTORY_API_REPO_URL }}:${{ env.IMAGE_TAG }}
+          docker tag ${{ secrets.HISTORY_API_REPO_URL }}:dev-latest \
+                     ${{ secrets.HISTORY_API_REPO_URL }}:test-latest
 
-      - name: Push test-tagged images
+      - name: Push test-tagged images to ECR
         run: |
-          docker push ${{ env.DOCKERHUB_USER }}/frontend:${{ env.IMAGE_TAG }}
-          docker push ${{ env.DOCKERHUB_USER }}/frontend:test-latest
-          docker push ${{ env.DOCKERHUB_USER }}/calc-api:${{ env.IMAGE_TAG }}
-          docker push ${{ env.DOCKERHUB_USER }}/calc-api:test-latest
-          docker push ${{ env.DOCKERHUB_USER }}/history-api:${{ env.IMAGE_TAG }}
-          docker push ${{ env.DOCKERHUB_USER }}/history-api:test-latest
-
-
+          docker push ${{ secrets.FRONTEND_REPO_URL }}:${{ env.IMAGE_TAG }}
+          docker push ${{ secrets.FRONTEND_REPO_URL }}:test-latest
+          docker push ${{ secrets.CALC_API_REPO_URL }}:${{ env.IMAGE_TAG }}
+          docker push ${{ secrets.CALC_API_REPO_URL }}:test-latest
+          docker push ${{ secrets.HISTORY_API_REPO_URL }}:${{ env.IMAGE_TAG }}
+          docker push ${{ secrets.HISTORY_API_REPO_URL }}:test-latest
 
   # ── open automated PR: test → prod ─────────────────────────────────────────
   open-pr:

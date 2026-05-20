@@ -1,0 +1,44 @@
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: appdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  calc-api:
+    image: ${CALC_API_REPO_URL}:dev-latest
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+
+  history-api:
+    image: ${HISTORY_API_REPO_URL}:dev-latest
+    ports:
+      - "5000:5000"
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: appdb
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    image: ${FRONTEND_REPO_URL}:dev-latest
+    ports:
+      - "80:80"
+    environment:
+      CALC_API_HOST: calc-api
+      HISTORY_API_HOST: history-api
+    depends_on:
+      - calc-api
+      - history-api
