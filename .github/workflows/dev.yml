@@ -13,7 +13,20 @@ env:
   IMAGE_TAG: dev-${{ github.sha }}
 
 jobs:
-  # ── calc-api: unit tests ──────────────────────────────────────────────────
+  # ── secret scanning ───────────────────────────────────────────────────────
+  secret-scan:
+    name: Secret Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: TruffleHog — scan for leaked secrets
+        uses: trufflesecurity/trufflehog@main
+        with:
+          extra_args: --only-verified
+
+  # ── calc-api: dependency audit + unit tests ───────────────────────────────
   ci-calc:
     name: Test — calc-api
     runs-on: ubuntu-latest
@@ -27,11 +40,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
         working-directory: calc-api
-      - name: Unit tests
-        run: npm test
+      - name: Dependency audit
+        run: npm audit --audit-level=high
+        working-directory: calc-api
+      - name: Unit tests with coverage
+        run: npm test -- --coverage
         working-directory: calc-api
 
-  # ── history-api: lint + unit tests ────────────────────────────────────────
+  # ── history-api: lint + dependency audit + unit tests ────────────────────
   ci-history:
     name: Lint & Test — history-api
     runs-on: ubuntu-latest
@@ -43,20 +59,23 @@ jobs:
           cache: pip
           cache-dependency-path: history-api/requirements-dev.txt
       - name: Install dependencies
-        run: pip install -r requirements.txt -r requirements-dev.txt
+        run: pip install -r requirements.txt -r requirements-dev.txt pip-audit pytest-cov
         working-directory: history-api
       - name: Lint
         run: flake8 app.py
         working-directory: history-api
-      - name: Unit tests
-        run: pytest || [ $? -eq 5 ]
+      - name: Dependency audit
+        run: pip-audit
+        working-directory: history-api
+      - name: Unit tests with coverage
+        run: pytest --cov=. --cov-report=term-missing || [ $? -eq 5 ]
         working-directory: history-api
 
-  # ── build images only after both CI jobs pass ──────────────────────────────
+  # ── build images only after all CI jobs pass ──────────────────────────────
   build-and-push:
     name: Build & Push Images
     runs-on: ubuntu-latest
-    needs: [ci-calc, ci-history]
+    needs: [ci-calc, ci-history, secret-scan]
     steps:
       - uses: actions/checkout@v4
       - uses: docker/login-action@v3
