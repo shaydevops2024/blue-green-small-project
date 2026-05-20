@@ -2,7 +2,7 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-TF_DIR="$SCRIPT_DIR/terraform/environments/small/option-a"
+TF_DIR="$SCRIPT_DIR/../terraform/environments/small/option-a"
 
 # ── Colors ────────────────────────────────────────────────────────────────────
 RED='\033[0;31m'

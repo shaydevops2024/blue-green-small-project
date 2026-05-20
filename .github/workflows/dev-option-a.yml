@@ -1,11 +1,14 @@
-name: Dev Pipeline
+name: Dev Pipeline — Option A
 
 on:
   push:
     branches: [dev]
+    paths:
+      - 'optionA/**'
+      - '.github/workflows/dev-option-a.yml'
 
 concurrency:
-  group: dev-pipeline
+  group: dev-pipeline-option-a
   cancel-in-progress: true
 
 env:
@@ -36,16 +39,16 @@ jobs:
         with:
           node-version: '20'
           cache: npm
-          cache-dependency-path: calc-api/package-lock.json
+          cache-dependency-path: optionA/calc-api/package-lock.json
       - name: Install dependencies
         run: npm ci
-        working-directory: calc-api
+        working-directory: optionA/calc-api
       - name: Dependency audit
         run: npm audit --audit-level=high
-        working-directory: calc-api
+        working-directory: optionA/calc-api
       - name: Unit tests with coverage
         run: npm test -- --coverage
-        working-directory: calc-api
+        working-directory: optionA/calc-api
 
   # ── history-api: lint + dependency audit + unit tests ────────────────────
   ci-history:
@@ -57,19 +60,19 @@ jobs:
         with:
           python-version: '3.12'
           cache: pip
-          cache-dependency-path: history-api/requirements-dev.txt
+          cache-dependency-path: optionA/history-api/requirements-dev.txt
       - name: Install dependencies
         run: pip install -r requirements.txt -r requirements-dev.txt pip-audit pytest-cov
-        working-directory: history-api
+        working-directory: optionA/history-api
       - name: Lint
         run: flake8 app.py
-        working-directory: history-api
+        working-directory: optionA/history-api
       - name: Dependency audit
         run: pip-audit
-        working-directory: history-api
+        working-directory: optionA/history-api
       - name: Unit tests with coverage
         run: pytest --cov=. --cov-report=term-missing || [ $? -eq 5 ]
-        working-directory: history-api
+        working-directory: optionA/history-api
 
   # ── build images only after all CI jobs pass ──────────────────────────────
   build-and-push:
@@ -86,7 +89,7 @@ jobs:
       - name: Build & push frontend
         uses: docker/build-push-action@v5
         with:
-          context: ./frontend
+          context: ./optionA/frontend
           push: true
           tags: |
             ${{ env.DOCKERHUB_USER }}/frontend:${{ env.IMAGE_TAG }}
@@ -94,7 +97,7 @@ jobs:
       - name: Build & push calc-api
         uses: docker/build-push-action@v5
         with:
-          context: ./calc-api
+          context: ./optionA/calc-api
           push: true
           tags: |
             ${{ env.DOCKERHUB_USER }}/calc-api:${{ env.IMAGE_TAG }}
@@ -102,7 +105,7 @@ jobs:
       - name: Build & push history-api
         uses: docker/build-push-action@v5
         with:
-          context: ./history-api
+          context: ./optionA/history-api
           push: true
           tags: |
             ${{ env.DOCKERHUB_USER }}/history-api:${{ env.IMAGE_TAG }}

@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-cd "$(dirname "$0")/../terraform/environments/small/option-a"
+cd "$(dirname "$0")/../../terraform/environments/small/option-a"
 
 echo "Reading terraform outputs..."
 

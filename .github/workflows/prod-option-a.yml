@@ -1,11 +1,14 @@
-name: Prod Pipeline
+name: Prod Pipeline — Option A
 
 on:
   push:
     branches: [prod]
+    paths:
+      - 'optionA/**'
+      - '.github/workflows/prod-option-a.yml'
 
 concurrency:
-  group: prod-pipeline
+  group: prod-pipeline-option-a
   cancel-in-progress: false
 
 env:
@@ -56,7 +59,7 @@ jobs:
           DH_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
         run: |
           # Encode the compose file so it survives being passed through jq/SSM
-          COMPOSE_B64=$(base64 -w0 docker-compose.prod.yml)
+          COMPOSE_B64=$(base64 -w0 optionA/docker-compose.prod.yml)
 
           SCRIPT=$(cat << 'SCRIPT_EOF'
           set -e

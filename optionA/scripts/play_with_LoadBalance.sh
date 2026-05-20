@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-TERRAFORM_DIR="$(dirname "$0")/../terraform/environments/small/option-a"
+TERRAFORM_DIR="$(dirname "$0")/../../terraform/environments/small/option-a"
 
 echo "Reading Terraform outputs..."
 LISTENER_ARN=$(terraform -chdir="$TERRAFORM_DIR" output -raw listener_arn | tr -d '[:space:]')
