@@ -13,9 +13,8 @@ env:
   IMAGE_TAG: test-${{ github.sha }}
 
 jobs:
-  
 
-  # ── integration tests ──────────────────────────────
+  # ── integration tests ──────────────────────────────────────────────────────
   integration-test:
     name: Integration Tests
     runs-on: ubuntu-latest
@@ -44,18 +43,60 @@ jobs:
           echo "Services did not become healthy"
           exit 1
 
-      - name: Test calc-api
+      - name: Test calc-api — assert correct result
         run: |
-          curl -sf -X POST http://localhost:3001/calculate \
+          RESULT=$(curl -sf -X POST http://localhost:3001/calculate \
             -H "Content-Type: application/json" \
-            -d '{"a": 2, "b": 3, "operation": "+"}'
+            -d '{"a": 2, "b": 3, "operation": "+"}')
+          echo "Response: $RESULT"
+          [ "$(echo "$RESULT" | jq -r '.result')" = "5" ] \
+            || (echo "Expected result=5, got: $RESULT" && exit 1)
+          [ "$(echo "$RESULT" | jq -r '.expression')" = "2 + 3" ] \
+            || (echo "Expected expression='2 + 3', got: $RESULT" && exit 1)
+          echo "calc-api: OK"
 
-      - name: Test history-api
-        run: curl -sf http://localhost:3002/history
+      - name: Test history-api — save and retrieve
+        run: |
+          POST=$(curl -sf -X POST http://localhost:3002/history \
+            -H "Content-Type: application/json" \
+            -d '{"expression": "2 + 3", "result": 5}')
+          echo "POST response: $POST"
+          [ "$(echo "$POST" | jq -r '.id')" != "null" ] \
+            || (echo "Expected id in POST response, got: $POST" && exit 1)
+
+          HISTORY=$(curl -sf http://localhost:3002/history)
+          echo "GET response: $HISTORY"
+          [ "$(echo "$HISTORY" | jq -r '.[0].expression')" = "2 + 3" ] \
+            || (echo "Expected saved entry in history, got: $HISTORY" && exit 1)
+          echo "history-api: OK"
 
       - name: Tear down stack
         if: always()
         run: docker compose -f docker-compose.test.yml down
+
+      - name: Scan calc-api image for CVEs
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.DOCKERHUB_USER }}/calc-api:dev-latest
+          severity: CRITICAL
+          exit-code: '1'
+          ignore-unfixed: true
+
+      - name: Scan history-api image for CVEs
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.DOCKERHUB_USER }}/history-api:dev-latest
+          severity: CRITICAL
+          exit-code: '1'
+          ignore-unfixed: true
+
+      - name: Scan frontend image for CVEs
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.DOCKERHUB_USER }}/frontend:dev-latest
+          severity: CRITICAL
+          exit-code: '1'
+          ignore-unfixed: true
 
       - name: Retag images as test
         run: |
