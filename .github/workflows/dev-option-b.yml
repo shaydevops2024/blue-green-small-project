@@ -39,7 +39,6 @@ jobs:
         with:
           node-version: '20'
           cache: npm
-          cache-dependency-path: optionB/calc-api/package-lock.json
       - name: Install dependencies
         run: npm ci
         working-directory: optionB/calc-api
@@ -60,7 +59,6 @@ jobs:
         with:
           python-version: '3.12'
           cache: pip
-          cache-dependency-path: optionB/history-api/requirements-dev.txt
       - name: Install dependencies
         run: pip install -r requirements.txt -r requirements-dev.txt pip-audit pytest-cov
         working-directory: optionB/history-api
