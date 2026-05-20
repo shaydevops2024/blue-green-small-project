@@ -1,0 +1,10 @@
+name: Test Pipeline — Option B
+
+on:
+  workflow_dispatch: # placeholder — full pipeline coming soon
+
+jobs:
+  placeholder:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Test pipeline not yet implemented"

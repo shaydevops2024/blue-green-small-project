@@ -1,0 +1,10 @@
+name: Prod Pipeline — Option B
+
+on:
+  workflow_dispatch: # placeholder — full pipeline coming soon
+
+jobs:
+  placeholder:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Prod pipeline not yet implemented"
